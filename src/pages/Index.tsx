@@ -60,6 +60,8 @@ const getPriceForItem = (item: string): number => {
     if (item.includes("Pande")) return 5500;
     // Ugali + Kidari or Ugali + Paja combinations
     if (item.includes("Ugali") && (item.includes("Kidari") || item.includes("Paja"))) return 5500;
+    //wali + Kidari or Wali + Paja combinations
+    if (item.includes("Wali") && (item.includes("Kidari") || item.includes("Paja"))) return 5500;
     // All other combinations
     return 4500;
   }

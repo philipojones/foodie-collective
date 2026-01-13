@@ -66,7 +66,9 @@ const getPriceForItem = (item: string): number => {
     // Fish (Sangara) combinations cost more
     if (item.includes("Samaki (Sangara)")) return 5500;
     // Pande combinations
-    if (item.includes("Pande")) return 5000;
+    if (item.includes("Pande")) return 5000
+    //wali + Kidari or Wali + Paja combinations
+    if (item.includes("Wali") && (item.includes("Kidari") || item.includes("Paja"))) return 5500;
     // All other combinations
     return 4500;
   }

@@ -39,7 +39,7 @@ const sides = [
 // Pricing structure
 const getPriceForItem = (item: string): number => {
   // Pilau standalone
-  if (item === "Pilau") return 4000;
+  if (item === "Pilau") return 4500;
   
   // Chips combinations
   if (item === "Chips") return 2000; // Chips Kavu

@@ -249,27 +249,67 @@ orders.forEach((order, index) => {
   text += `${index + 1}. ${order.name} - ${formatDate(order.timestamp)}\n`;
   text += `   Items: ${order.items.join(", ")}\n`;
   text += `   Items Total: ${itemsTotal.toLocaleString()}/= TZS\n`;
-  text += `   Delivery Fee: ${DELIVERY_FEE.toLocaleString()}/= TZS\n`;
+  // text += `   Delivery Fee: ${DELIVERY_FEE.toLocaleString()}/= TZS\n`;
   text += `   Order Total: ${orderTotal.toLocaleString()}/= TZS\n\n`;
 });
 
-text += `\nTOTAL SPEND: ${totalRevenue.toLocaleString()}/= TZS`;
+text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`;
 
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
+
+    // Try modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          toast({
+            title: "Copied to clipboard",
+            description: "All orders have been copied to your clipboard",
+          });
+        })
+        .catch(() => {
+          // Fallback to legacy method
+          fallbackCopyToClipboard(text);
+        });
+    } else {
+      // Use fallback for non-secure contexts
+      fallbackCopyToClipboard(text);
+    }
+  };
+
+  // Fallback copy method for non-secure contexts
+  const fallbackCopyToClipboard = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
         toast({
           title: "Copied to clipboard",
           description: "All orders have been copied to your clipboard",
         });
-      })
-      .catch(() => {
+      } else {
         toast({
           title: "Failed to copy",
-          description: "Could not copy orders to clipboard",
+          description: "Could not copy orders to clipboard. Try using HTTPS.",
           variant: "destructive",
         });
+      }
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy orders to clipboard. Try using HTTPS.",
+        variant: "destructive",
       });
+    }
+    
+    document.body.removeChild(textArea);
   };
 
   const copySummaryToClipboard = () => {
@@ -284,21 +324,24 @@ text += `\nTOTAL SPEND: ${totalRevenue.toLocaleString()}/= TZS`;
     text += `\n\nTOTAL ORDERS: ${orders.length}\n`;
     text += `TOTAL SPEND + DELIVERY FEE: ${totalRevenue.toLocaleString()}/= TZS`;
 
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        toast({
-          title: "Copied to clipboard",
-          description: "Food summary has been copied to your clipboard",
+    // Try modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          toast({
+            title: "Copied to clipboard",
+            description: "Food summary has been copied to your clipboard",
+          });
+        })
+        .catch(() => {
+          // Fallback to legacy method
+          fallbackCopyToClipboard(text);
         });
-      })
-      .catch(() => {
-        toast({
-          title: "Failed to copy",
-          description: "Could not copy summary to clipboard",
-          variant: "destructive",
-        });
-      });
+    } else {
+      // Use fallback for non-secure contexts
+      fallbackCopyToClipboard(text);
+    }
   };
 
   // Function to delete a single order

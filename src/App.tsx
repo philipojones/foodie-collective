@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import ThankYou from "./pages/ThankYou";
 import Orders from "./pages/Orders";
-import NotFound from "./pages/NotFound";
 
 // Add framer-motion dependency
 import { AnimatePresence } from "framer-motion";

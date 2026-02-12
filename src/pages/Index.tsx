@@ -89,6 +89,7 @@ const Index = () => {
   const [alreadyOrdered, setAlreadyOrdered] = useState(false);
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
   const [checkingOrder, setCheckingOrder] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -285,6 +286,8 @@ const Index = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (submitting) return; // Prevent multiple submissions
+
     if (!name.trim()) {
       toast({
         title: "Name is required",
@@ -303,6 +306,8 @@ const Index = () => {
       });
       return;
     }
+
+    setSubmitting(true);
 
     try {
       // Save name to localStorage for future use
@@ -338,6 +343,7 @@ const Index = () => {
             "There was a problem submitting your order. Please try again.",
           variant: "destructive",
         });
+        setSubmitting(false);
         return;
       }
 
@@ -367,6 +373,7 @@ const Index = () => {
           "There was a problem submitting your order. Please try again.",
         variant: "destructive",
       });
+      setSubmitting(false);
     }
   };
 
@@ -556,9 +563,10 @@ const Index = () => {
             <div className="flex justify-center mt-8">
               <Button
                 type="submit"
+                disabled={submitting}
                 className="px-8 py-6 text-lg rounded-xl transition-all duration-300 hover:scale-105"
               >
-                {alreadyOrdered ? "Update Order" : "Submit Order"}
+                {submitting ? "Submitting..." : alreadyOrdered ? "Update Order" : "Submit Order"}
               </Button>
             </div>
           </form>

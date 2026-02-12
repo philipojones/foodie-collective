@@ -55,13 +55,9 @@ const getPriceForItem = (item: string): number => {
   // Main + Side combinations
   if (item.includes("+")) {
     // Fish (Sangara) combinations cost more
-    if (item.includes("Samaki (Sangara)")) return 5500;
+    
     // Pande combinations
     if (item.includes("Pande")) return 5500;
-    // Ugali + Kidari or Ugali + Paja combinations
-    if (item.includes("Ugali") && (item.includes("Kidari") || item.includes("Paja"))) return 4000;
-    //wali + Kidari or Wali + Paja combinations
-    if (item.includes("Wali") && (item.includes("Kidari") || item.includes("Paja"))) return 5500;
 
     // All other combinations
     return 4500;
@@ -124,7 +120,7 @@ const Index = () => {
     : selectedMain === "Pilau"
     ? [] // No sides available for Pilau
     : (selectedMain === "Ugali" || selectedMain === "Wali")
-    ? sides.filter(side => side !== "Mayai")
+    ? sides.filter(side => !["Mayai", "Kidari", "Paja", "Samaki (Sangara)"].includes(side))
     : sides;
 
   useEffect(() => {
@@ -196,12 +192,12 @@ const Index = () => {
           description: "Chips can only be combined with Mayai, Kidari, or Paja",
         });
       }
-      // If switching to Ugali or Wali and Mayai is selected, clear side
-      else if ((dish === "Ugali" || dish === "Wali") && selectedSide === "Mayai") {
+      // If switching to Ugali or Wali and restricted side is selected, clear side
+      else if ((dish === "Ugali" || dish === "Wali") && ["Mayai", "Kidari", "Paja", "Samaki (Sangara)"].includes(selectedSide)) {
         setSelectedSide("");
         toast({
           title: "Side cleared",
-          description: "Ugali and Wali cannot be combined with Mayai",
+          description: "Ugali and Wali cannot be combined with Mayai, Kidari, Paja, or Samaki",
         });
       }
       setSelectedMain(dish);
@@ -229,11 +225,11 @@ const Index = () => {
       return;
     }
     
-    // Check if trying to select Mayai with Ugali or Wali
-    if ((selectedMain === "Ugali" || selectedMain === "Wali") && side === "Mayai") {
+    // Check if trying to select restricted sides with Ugali or Wali
+    if ((selectedMain === "Ugali" || selectedMain === "Wali") && ["Mayai", "Kidari", "Paja", "Samaki (Sangara)"].includes(side)) {
       toast({
         title: "Invalid combination",
-        description: "Ugali and Wali cannot be combined with Mayai",
+        description: "Ugali and Wali cannot be combined with Mayai, Kidari, Paja, or Samaki",
         variant: "destructive",
       });
       return;

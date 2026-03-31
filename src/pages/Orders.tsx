@@ -50,6 +50,9 @@ const getPriceForItem = (item: string): number => {
   // Pilau standalone
   if (item === "Pilau") return 4500;
   
+  // Matunda standalone
+  if (item === "Matunda") return 3000;
+  
   // Chips combinations
   if (item === "Chips") return 2000; // Chips Kavu
   if (item.includes("Chips")) {

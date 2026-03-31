@@ -21,6 +21,7 @@ const mainDishes = [
   "Wali",
   "Pilau",
   "Chips",
+  "Matunda",
 ];
 
 const sides = [
@@ -40,6 +41,9 @@ const sides = [
 const getPriceForItem = (item: string): number => {
   // Pilau standalone
   if (item === "Pilau") return 4500;
+  
+  // Matunda standalone
+  if (item === "Matunda") return 3000;
   
   // Chips combinations
   if (item === "Chips") return 2000; // Chips Kavu
@@ -113,13 +117,13 @@ const Index = () => {
   };
   
   const totalCost = getCombinationPrice();
-  const selectedItems = selectedMain && selectedSide ? [`${selectedMain} + ${selectedSide}`] : selectedMain === "Pilau" ? ["Pilau"] : [];
+  const selectedItems = selectedMain && selectedSide ? [`${selectedMain} + ${selectedSide}`] : (selectedMain === "Pilau" || selectedMain === "Matunda") ? [selectedMain] : [];
   
   // Filter available sides based on main dish
   const availableSides = selectedMain === "Chips" 
     ? sides.filter(side => ["Mayai", "Kidari", "Paja"].includes(side))
-    : selectedMain === "Pilau"
-    ? [] // No sides available for Pilau
+    : selectedMain === "Pilau" || selectedMain === "Matunda"
+    ? [] // No sides available for Pilau or Matunda
     : (selectedMain === "Ugali" || selectedMain === "Wali")
     ? sides.filter(side => !["Mayai", "Kidari", "Paja", "Samaki (Sangara)"].includes(side))
     : sides;
@@ -185,6 +189,14 @@ const Index = () => {
           description: "Pilau is served alone without sides (4,000/=)",
         });
       }
+      // If switching to Matunda, clear side and show message
+      else if (dish === "Matunda" && selectedSide) {
+        setSelectedSide("");
+        toast({
+          title: "Matunda is standalone",
+          description: "Matunda is served alone without sides (3,000/=)",
+        });
+      }
       // If switching to Chips and current side is not valid for Chips, clear side
       else if (dish === "Chips" && selectedSide && !["Mayai", "Kidari", "Paja"].includes(selectedSide)) {
         setSelectedSide("");
@@ -211,6 +223,16 @@ const Index = () => {
       toast({
         title: "Invalid combination",
         description: "Pilau is served alone without sides (4,000/=)",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if trying to select side with Matunda
+    if (selectedMain === "Matunda") {
+      toast({
+        title: "Invalid combination",
+        description: "Matunda is served alone without sides (3,000/=)",
         variant: "destructive",
       });
       return;
@@ -297,11 +319,11 @@ const Index = () => {
       return;
     }
 
-    // Pilau can be submitted alone, others need a side
-    if (!selectedMain || (selectedMain !== "Pilau" && !selectedSide)) {
+    // Pilau and Matunda can be submitted alone, others need a side
+    if (!selectedMain || (selectedMain !== "Pilau" && selectedMain !== "Matunda" && !selectedSide)) {
       toast({
         title: "Incomplete order",
-        description: selectedMain === "Pilau" ? "Please select Pilau" : "Please select one main dish and one side",
+        description: selectedMain === "Pilau" || selectedMain === "Matunda" ? `Please select ${selectedMain}` : "Please select one main dish and one side",
         variant: "destructive",
       });
       return;
@@ -313,7 +335,7 @@ const Index = () => {
       // Save name to localStorage for future use
       localStorage.setItem("neurotech-name", name);
 
-      const orderItems = selectedMain === "Pilau" ? ["Pilau"] : [`${selectedMain} + ${selectedSide}`];
+      const orderItems = (selectedMain === "Pilau" || selectedMain === "Matunda") ? [selectedMain] : [`${selectedMain} + ${selectedSide}`];
       let operation;
 
       if (alreadyOrdered && existingOrderId) {
@@ -491,6 +513,8 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground mb-4">
                   {selectedMain === "Pilau"
                     ? "Pilau is served alone without sides (4,000/=)"
+                    : selectedMain === "Matunda"
+                    ? "Matunda is served alone without sides (3,000/=)"
                     : selectedMain === "Chips" 
                     ? "Chips can only be combined with Mayai, Kidari, or Paja" 
                     : "Select one side dish"}
@@ -537,15 +561,15 @@ const Index = () => {
                       </div>
                     )}
                     
-                    {selectedMain && (selectedMain === "Pilau" || selectedSide) && (
+                    {selectedMain && (selectedMain === "Pilau" || selectedMain === "Matunda" || selectedSide) && (
                       <div className="pt-3 border-t">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-muted-foreground">
-                              {selectedMain === "Pilau" ? "Standalone Dish" : "Combination"}
+                              {selectedMain === "Pilau" || selectedMain === "Matunda" ? "Standalone Dish" : "Combination"}
                             </p>
                             <p className="font-medium">
-                              {selectedMain === "Pilau" ? "Pilau" : `${selectedMain} + ${selectedSide}`}
+                              {selectedMain === "Pilau" || selectedMain === "Matunda" ? selectedMain : `${selectedMain} + ${selectedSide}`}
                             </p>
                           </div>
                           <div className="text-right">

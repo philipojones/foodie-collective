@@ -52,6 +52,7 @@ const getPriceForItem = (item: string): number => {
   
   // Matunda standalone
   if (item === "Matunda") return 3000;
+  if (item === "Juice") return 3000;
   
   // Chips combinations
   if (item === "Chips") return 2000; // Chips Kavu
@@ -91,7 +92,7 @@ const Orders = () => {
   const { toast } = useToast();
 
   const isMatundaOrder = (order: OrderItem) =>
-    order.items.some((item) => item.includes("Matunda"));
+    order.items.some((item) => item.includes("Matunda") || item.includes("Juice"));
   const foodOrders = orders.filter((order) => !isMatundaOrder(order));
   const matundaOrders = orders.filter((order) => isMatundaOrder(order));
 
@@ -294,7 +295,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
   };
 
   const copyFoodOrdersToClipboard = () => {
-    let text = "Neurotech Africa - Food Orders (No Matunda)\n";
+    let text = "Neurotech Africa - Food Orders (No Matunda/Juice)\n";
 
     if (foodOrders.length === 0) {
       text += "No food orders available.\n";
@@ -394,9 +395,9 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
 
     text += `\n\nTOTAL ORDERS: ${orders.length}\n`;
     text += `FOOD ORDERS: ${foodOrders.length}\n`;
-    text += `MATUNDA ORDERS: ${matundaOrders.length}\n\n`;
+    text += `MATUNDA/JUICE ORDERS: ${matundaOrders.length}\n\n`;
     text += `FOOD TOTAL (Food + Delivery): ${foodTotalWithDelivery.toLocaleString()}/= TZS\n`;
-    text += `MATUNDA TOTAL (No Delivery): ${matundaTotal.toLocaleString()}/= TZS\n\n`;
+    text += `MATUNDA/JUICE TOTAL (No Delivery): ${matundaTotal.toLocaleString()}/= TZS\n\n`;
     text += `GRAND TOTAL: ${grandTotal.toLocaleString()}/= TZS`;
 
     // Try modern clipboard API first
@@ -691,12 +692,12 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                     <span>{(foodItemsTotal + foodDeliveryTotal).toLocaleString()}/=</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Matunda Total</span>
+                    <span className="text-muted-foreground">Matunda/Juice Total</span>
                     <span>{matundaTotal.toLocaleString()}/=</span>
                   </div>
                 </div>
                 <div className="text-center pt-2 border-t border-primary/20">
-                  <p className="text-xs text-muted-foreground italic">Delivery is flat 1,000/= once for all Food orders. Matunda has no delivery cost.</p>
+                  <p className="text-xs text-muted-foreground italic">Delivery is flat 1,000/= once for all Food orders. Matunda and Juice have no delivery cost.</p>
                 </div>
               </div>
             </div>
@@ -728,7 +729,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
               <TableBody>
                 <TableRow>
                   <TableCell colSpan={5} className="font-semibold bg-muted/40">
-                    Food Orders (No Matunda)
+                    Food Orders (No Matunda/Juice)
                   </TableCell>
                 </TableRow>
                 {foodOrders.length > 0 ? (
@@ -775,7 +776,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
 
                 <TableRow>
                   <TableCell colSpan={5} className="font-semibold bg-muted/40">
-                    Matunda Orders
+                    Matunda/Juice Orders
                   </TableCell>
                 </TableRow>
                 {matundaOrders.length > 0 ? (
@@ -815,7 +816,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="text-muted-foreground">
-                      No Matunda orders.
+                      No Matunda/Juice orders.
                     </TableCell>
                   </TableRow>
                 )}

@@ -90,12 +90,26 @@ const Orders = () => {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const isMatundaOrder = (order: OrderItem) =>
+    order.items.some((item) => item.includes("Matunda"));
+  const foodOrders = orders.filter((order) => !isMatundaOrder(order));
+  const matundaOrders = orders.filter((order) => isMatundaOrder(order));
+
+  const foodItemsTotal = foodOrders.reduce(
+    (sum, order) =>
+      sum + order.items.reduce((orderSum, item) => orderSum + getPriceForItem(item), 0),
+    0
+  );
+  const matundaTotal = matundaOrders.reduce(
+    (sum, order) =>
+      sum + order.items.reduce((orderSum, item) => orderSum + getPriceForItem(item), 0),
+    0
+  );
+
   // Calculate total revenue for all orders
   const DELIVERY_FEE = 1000;
-  const totalRevenue = orders.reduce((sum, order) => {
-    const orderTotal = order.items.reduce((orderSum, item) => orderSum + getPriceForItem(item), 0);
-    return sum + orderTotal;
-  }, 0) + DELIVERY_FEE;
+  const foodDeliveryTotal = foodOrders.length > 0 ? DELIVERY_FEE : 0;
+  const totalRevenue = foodItemsTotal + foodDeliveryTotal + matundaTotal;
 
   const isFromToday = (dateString: string): boolean => {
     const orderDate = new Date(dateString);
@@ -279,6 +293,56 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
     }
   };
 
+  const copyFoodOrdersToClipboard = () => {
+    let text = "Neurotech Africa - Food Orders (No Matunda)\n";
+
+    if (foodOrders.length === 0) {
+      text += "No food orders available.\n";
+    } else {
+      const foodTotal = foodOrders.reduce(
+        (sum, order) =>
+          sum + order.items.reduce((orderSum, item) => orderSum + getPriceForItem(item), 0),
+        0
+      );
+      const flatDeliveryFee = 1000;
+      const foodTotalWithDelivery = foodTotal + flatDeliveryFee;
+      const foodBreakdown: Record<string, number> = {};
+
+      foodOrders.forEach((order) => {
+        order.items.forEach((item) => {
+          foodBreakdown[item] = (foodBreakdown[item] || 0) + 1;
+        });
+      });
+
+      text += "OVERALL BREAKDOWN\n";
+      Object.entries(foodBreakdown)
+        .sort(([, a], [, b]) => b - a)
+        .forEach(([item, count]) => {
+          text += `${item}: ${count}\n`;
+        });
+
+      text += `\nTOTAL FOOD SPEND: ${foodTotal.toLocaleString()}/= TZS\n`;
+      text += `DELIVERY FEE (Flat): ${flatDeliveryFee.toLocaleString()}/= TZS\n`;
+      text += `TOTAL FOOD + DELIVERY: ${foodTotalWithDelivery.toLocaleString()}/= TZS\n`;
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          toast({
+            title: "Copied to clipboard",
+            description: "Food-only orders have been copied to your clipboard",
+          });
+        })
+        .catch(() => {
+          fallbackCopyToClipboard(text);
+        });
+    } else {
+      fallbackCopyToClipboard(text);
+    }
+  };
+
   // Fallback copy method for non-secure contexts
   const fallbackCopyToClipboard = (text: string) => {
     const textArea = document.createElement("textarea");
@@ -323,9 +387,17 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
       .forEach(([item, count]) => {
         text += `${item} ${count}\n`;
       });
-    
+
+    const foodDeliveryTotal = foodOrders.length > 0 ? DELIVERY_FEE : 0;
+    const foodTotalWithDelivery = foodItemsTotal + foodDeliveryTotal;
+    const grandTotal = foodTotalWithDelivery + matundaTotal;
+
     text += `\n\nTOTAL ORDERS: ${orders.length}\n`;
-    text += `TOTAL SPEND + DELIVERY FEE: ${totalRevenue.toLocaleString()}/= TZS`;
+    text += `FOOD ORDERS: ${foodOrders.length}\n`;
+    text += `MATUNDA ORDERS: ${matundaOrders.length}\n\n`;
+    text += `FOOD TOTAL (Food + Delivery): ${foodTotalWithDelivery.toLocaleString()}/= TZS\n`;
+    text += `MATUNDA TOTAL (No Delivery): ${matundaTotal.toLocaleString()}/= TZS\n\n`;
+    text += `GRAND TOTAL: ${grandTotal.toLocaleString()}/= TZS`;
 
     // Try modern clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
@@ -513,6 +585,14 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
             </Button>
 
             <Button
+              onClick={copyFoodOrdersToClipboard}
+              disabled={foodOrders.length === 0}
+              variant="secondary"
+            >
+              <Clipboard className="mr-2 h-4 w-4" /> Copy Food Only
+            </Button>
+
+            <Button
               onClick={copySummaryToClipboard}
               disabled={orders.length === 0}
               variant="secondary"
@@ -605,8 +685,18 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                     <p className="text-xs text-muted-foreground">TZS</p>
                   </div>
                 </div>
+                <div className="pt-2 border-t border-primary/20 text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Food Total (Food + Delivery)</span>
+                    <span>{(foodItemsTotal + foodDeliveryTotal).toLocaleString()}/=</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Matunda Total</span>
+                    <span>{matundaTotal.toLocaleString()}/=</span>
+                  </div>
+                </div>
                 <div className="text-center pt-2 border-t border-primary/20">
-                  <p className="text-xs text-muted-foreground italic">Delivery fee: 1,000/= (constant) Already added on Total Spend</p>
+                  <p className="text-xs text-muted-foreground italic">Delivery is flat 1,000/= once for all Food orders. Matunda has no delivery cost.</p>
                 </div>
               </div>
             </div>
@@ -636,39 +726,99 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order) => {
-                  const orderTotal = order.items.reduce((sum, item) => sum + getPriceForItem(item), 0);
-                  return (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.name}</TableCell>
-                      <TableCell>
-                        <ul className="list-disc pl-5">
-                          {order.items.map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
-                      </TableCell>
-                      <TableCell className="font-semibold text-primary">
-                        {orderTotal.toLocaleString()}/=
-                      </TableCell>
-                      <TableCell>{formatDate(order.timestamp)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteOrder(order.id, order.name)}
-                          disabled={deletingOrderId === order.id}
-                        >
-                          {deletingOrderId === order.id ? (
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                <TableRow>
+                  <TableCell colSpan={5} className="font-semibold bg-muted/40">
+                    Food Orders (No Matunda)
+                  </TableCell>
+                </TableRow>
+                {foodOrders.length > 0 ? (
+                  foodOrders.map((order) => {
+                    const orderTotal = order.items.reduce((sum, item) => sum + getPriceForItem(item), 0);
+                    return (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">{order.name}</TableCell>
+                        <TableCell>
+                          <ul className="list-disc pl-5">
+                            {order.items.map((item, idx) => (
+                              <li key={idx}>{item}</li>
+                            ))}
+                          </ul>
+                        </TableCell>
+                        <TableCell className="font-semibold text-primary">
+                          {orderTotal.toLocaleString()}/=
+                        </TableCell>
+                        <TableCell>{formatDate(order.timestamp)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteOrder(order.id, order.name)}
+                            disabled={deletingOrderId === order.id}
+                          >
+                            {deletingOrderId === order.id ? (
+                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-muted-foreground">
+                      No food orders.
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                <TableRow>
+                  <TableCell colSpan={5} className="font-semibold bg-muted/40">
+                    Matunda Orders
+                  </TableCell>
+                </TableRow>
+                {matundaOrders.length > 0 ? (
+                  matundaOrders.map((order) => {
+                    const orderTotal = order.items.reduce((sum, item) => sum + getPriceForItem(item), 0);
+                    return (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">{order.name}</TableCell>
+                        <TableCell>
+                          <ul className="list-disc pl-5">
+                            {order.items.map((item, idx) => (
+                              <li key={idx}>{item}</li>
+                            ))}
+                          </ul>
+                        </TableCell>
+                        <TableCell className="font-semibold text-primary">
+                          {orderTotal.toLocaleString()}/=
+                        </TableCell>
+                        <TableCell>{formatDate(order.timestamp)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteOrder(order.id, order.name)}
+                            disabled={deletingOrderId === order.id}
+                          >
+                            {deletingOrderId === order.id ? (
+                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-muted-foreground">
+                      No Matunda orders.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </motion.div>

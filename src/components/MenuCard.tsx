@@ -28,17 +28,17 @@ const MenuCard: React.FC<MenuCardProps> = ({ title, selected, onSelect, index })
           selected ? "ring-2 ring-primary bg-accent" : "bg-card"
         )}
       >
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">{title}</h3>
+        <div className="flex justify-between items-center gap-2">
+          <h3 className="text-base font-medium break-words min-w-0">{title}</h3>
           <motion.div
             initial={false}
             animate={selected ? { scale: 1.2 } : { scale: 1 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
           >
             {selected ? (
-              <CheckCircle className="h-6 w-6 text-primary" />
+              <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
             ) : (
-              <PlusCircle className="h-6 w-6 text-muted-foreground" />
+              <PlusCircle className="h-6 w-6 shrink-0 text-muted-foreground" />
             )}
           </motion.div>
         </div>

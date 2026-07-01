@@ -15,76 +15,17 @@ import {
 } from "@/components/ui/card";
 import { CalendarDays, Star, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-
-const mainDishes = [
-  "Ugali",
-  "Wali",
-  "Pilau",
-  "Chips",
-  "Matunda",
-  "Juice",
-];
-
-const sides = [
-  "Nyama",
-  "Maini",
-  "Utumbo",
-  "Dagaa",
-  "Njegere",
-  "Kokoto",
-  "Samaki (Sangara)",
-  "Mayai",
-  "Kidari",
-  "Paja",
-];
-
-// Pricing structure
-const getPriceForItem = (item: string): number => {
-  // Pilau standalone
-  if (item === "Pilau") return 4500;
-  
-  // Matunda standalone
-  if (item === "Matunda") return 3000;
-  if (item === "Juice") return 3000;
-  
-  // Chips combinations
-  if (item === "Chips") return 2000; // Chips Kavu
-  if (item.includes("Chips")) {
-    if (item.includes("Mayai")) return 3000;
-    if (item.includes("Kidari") || item.includes("Paja")) return 5000;
-    return 2000;
-  }
-  
-  // Special item Pande standalone
-  if (item === "Pande") return 5500;
-  
-  // Main + Side combinations
-  if (item.includes("+")) {
-    // Fish (Sangara) combinations cost more
-    
-    // Pande combinations
-    if (item.includes("Pande")) return 5500;
-
-    // All other combinations
-    return 4500;
-  }
-  
-  return 0;
-};
-
-// Generate all possible combinations for order of the day
-const menuItems = mainDishes.flatMap((main) =>
-  sides.map((side) => `${main} + ${side}`)
-);
-
-// Get a random menu item for the order of the day
-const getOrderOfTheDay = () => {
-  const date = new Date();
-  // Use the day of the month to select an item (ensures consistency for the day)
-  const dayOfMonth = date.getDate();
-  const index = dayOfMonth % menuItems.length;
-  return menuItems[index];
-};
+import {
+  mainDishes,
+  foodDishes,
+  fruitsDishes,
+  juiceDishes,
+  validSidesMap,
+  standaloneItems,
+  optionalSideItems,
+  getPriceForItem,
+  getOrderOfTheDay,
+} from "@/lib/menuConfig";
 
 const orderOfTheDay = getOrderOfTheDay();
 
@@ -98,49 +39,38 @@ const Index = () => {
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  // Calculate total cost based on combination
+
   const getCombinationPrice = () => {
     if (!selectedMain && !selectedSide) return 0;
-    
-    // If both selected, create combination
+
     if (selectedMain && selectedSide) {
       const combination = `${selectedMain} + ${selectedSide}`;
       return getPriceForItem(combination);
     }
-    
-    // If only main selected
+
     if (selectedMain) return getPriceForItem(selectedMain);
-    
-    // If only side selected
     if (selectedSide) return getPriceForItem(selectedSide);
-    
+
     return 0;
   };
-  
+
   const totalCost = getCombinationPrice();
-  const selectedItems = selectedMain && selectedSide ? [`${selectedMain} + ${selectedSide}`] : (selectedMain === "Pilau" || selectedMain === "Matunda" || selectedMain === "Juice") ? [selectedMain] : [];
-  
-  // Filter available sides based on main dish
-  const availableSides = selectedMain === "Chips" 
-    ? sides.filter(side => ["Mayai", "Kidari", "Paja"].includes(side))
-    : selectedMain === "Pilau" || selectedMain === "Matunda" || selectedMain === "Juice"
-    ? [] // No sides available for Pilau, Matunda, or Juice
-    : (selectedMain === "Ugali" || selectedMain === "Wali")
-    ? sides.filter(side => !["Mayai", "Kidari", "Paja", "Samaki (Sangara)"].includes(side))
-    : sides;
+  const selectedItems = selectedMain && selectedSide
+    ? [`${selectedMain} + ${selectedSide}`]
+    : selectedMain && standaloneItems.has(selectedMain)
+    ? [selectedMain]
+    : [];
+
+  const availableSides = validSidesMap[selectedMain] || [];
 
   useEffect(() => {
-    // Check if user has already ordered today
     const checkExistingOrder = async () => {
       setCheckingOrder(true);
 
-      // First try to get the name from localStorage
       const storedName = localStorage.getItem("neurotech-name");
       if (storedName) {
         setName(storedName);
 
-        // Check if this user has already placed an order today
         try {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -158,13 +88,16 @@ const Index = () => {
           } else if (data && data.length > 0) {
             setAlreadyOrdered(true);
             setExistingOrderId(data[0].id);
-            // Pre-fill the selected items with the existing order
             if (data[0].items && data[0].items.length > 0) {
               const orderItem = data[0].items[0];
               if (orderItem.includes(" + ")) {
                 const [main, side] = orderItem.split(" + ");
-                setSelectedMain(main);
-                setSelectedSide(side);
+                if (mainDishes.includes(main)) {
+                  setSelectedMain(main);
+                  setSelectedSide(side);
+                }
+              } else if (mainDishes.includes(orderItem)) {
+                setSelectedMain(orderItem);
               }
             }
           }
@@ -182,107 +115,52 @@ const Index = () => {
   const handleMainDishClick = (dish: string) => {
     if (selectedMain === dish) {
       setSelectedMain("");
-    } else {
-      // If switching to Pilau, clear side and show message
-      if (dish === "Pilau" && selectedSide) {
-        setSelectedSide("");
-        toast({
-          title: "Pilau is standalone",
-          description: "Pilau is served alone without sides (4,000/=)",
-        });
-      }
-      // If switching to Matunda, clear side and show message
-      else if (dish === "Matunda" && selectedSide) {
-        setSelectedSide("");
-        toast({
-          title: "Matunda is standalone",
-          description: "Matunda is served alone without sides (3,000/=)",
-        });
-      }
-      // If switching to Juice, clear side and show message
-      else if (dish === "Juice" && selectedSide) {
-        setSelectedSide("");
-        toast({
-          title: "Juice is standalone",
-          description: "Juice is served alone without sides (3,000/=)",
-        });
-      }
-      // If switching to Chips and current side is not valid for Chips, clear side
-      else if (dish === "Chips" && selectedSide && !["Mayai", "Kidari", "Paja"].includes(selectedSide)) {
-        setSelectedSide("");
-        toast({
-          title: "Side cleared",
-          description: "Chips can only be combined with Mayai, Kidari, or Paja",
-        });
-      }
-      // If switching to Ugali or Wali and restricted side is selected, clear side
-      else if ((dish === "Ugali" || dish === "Wali") && ["Mayai", "Kidari", "Paja", "Samaki (Sangara)"].includes(selectedSide)) {
-        setSelectedSide("");
-        toast({
-          title: "Side cleared",
-          description: "Ugali and Wali cannot be combined with Mayai, Kidari, Paja, or Samaki",
-        });
-      }
-      setSelectedMain(dish);
+      return;
     }
+
+    if (selectedSide) {
+      const newValidSides = validSidesMap[dish] || [];
+      if (!newValidSides.includes(selectedSide)) {
+        setSelectedSide("");
+        if (standaloneItems.has(dish) && !optionalSideItems.has(dish)) {
+          toast({
+            title: `${dish} is standalone`,
+            description: `${dish} is served alone (${getPriceForItem(dish).toLocaleString()}/=)`,
+          });
+        } else if (newValidSides.length > 0) {
+          toast({
+            title: "Side cleared",
+            description: `${selectedSide} is not available with ${dish}`,
+          });
+        }
+      }
+    }
+
+    setSelectedMain(dish);
   };
 
   const handleSideClick = (side: string) => {
-    // Check if trying to select side with Pilau
-    if (selectedMain === "Pilau") {
+    const validSides = validSidesMap[selectedMain] || [];
+
+    if (validSides.length === 0) {
       toast({
         title: "Invalid combination",
-        description: "Pilau is served alone without sides (4,000/=)",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Check if trying to select side with Matunda
-    if (selectedMain === "Matunda") {
-      toast({
-        title: "Invalid combination",
-        description: "Matunda is served alone without sides (3,000/=)",
+        description: `${selectedMain} cannot be combined with sides`,
         variant: "destructive",
       });
       return;
     }
 
-    // Check if trying to select side with Juice
-    if (selectedMain === "Juice") {
+    if (!validSides.includes(side)) {
       toast({
         title: "Invalid combination",
-        description: "Juice is served alone without sides (3,000/=)",
+        description: `${selectedMain} cannot be combined with ${side}`,
         variant: "destructive",
       });
       return;
     }
-    
-    // Check if trying to select invalid combination with Chips
-    if (selectedMain === "Chips" && !["Mayai", "Kidari", "Paja"].includes(side)) {
-      toast({
-        title: "Invalid combination",
-        description: "Chips can only be combined with Mayai, Kidari, or Paja",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Check if trying to select restricted sides with Ugali or Wali
-    if ((selectedMain === "Ugali" || selectedMain === "Wali") && ["Mayai", "Kidari", "Paja", "Samaki (Sangara)"].includes(side)) {
-      toast({
-        title: "Invalid combination",
-        description: "Ugali and Wali cannot be combined with Mayai, Kidari, Paja, or Samaki",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (selectedSide === side) {
-      setSelectedSide("");
-    } else {
-      setSelectedSide(side);
-    }
+
+    setSelectedSide(selectedSide === side ? "" : side);
   };
 
   const handleRemoveItem = (item: string) => {
@@ -292,7 +170,7 @@ const Index = () => {
 
   const handleAddOrderOfTheDay = () => {
     const currentSelection = selectedMain && selectedSide ? `${selectedMain} + ${selectedSide}` : "";
-    
+
     if (currentSelection === orderOfTheDay) {
       toast({
         title: "Already in your order",
@@ -301,8 +179,7 @@ const Index = () => {
       });
       return;
     }
-    
-    // Parse the order of the day and set main and side
+
     if (orderOfTheDay.includes(" + ")) {
       const [main, side] = orderOfTheDay.split(" + ");
       setSelectedMain(main);
@@ -328,7 +205,7 @@ const Index = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (submitting) return; // Prevent multiple submissions
+    if (submitting) return;
 
     if (!name.trim()) {
       toast({
@@ -339,11 +216,12 @@ const Index = () => {
       return;
     }
 
-    // Pilau, Matunda, and Juice can be submitted alone, others need a side
-    if (!selectedMain || (selectedMain !== "Pilau" && selectedMain !== "Matunda" && selectedMain !== "Juice" && !selectedSide)) {
+    if (!selectedMain || (!standaloneItems.has(selectedMain) && !selectedSide)) {
       toast({
         title: "Incomplete order",
-        description: selectedMain === "Pilau" || selectedMain === "Matunda" || selectedMain === "Juice" ? `Please select ${selectedMain}` : "Please select one main dish and one side",
+        description: standaloneItems.has(selectedMain)
+          ? `Click submit to confirm ${selectedMain}`
+          : "Please select one main dish and one side",
         variant: "destructive",
       });
       return;
@@ -352,23 +230,22 @@ const Index = () => {
     setSubmitting(true);
 
     try {
-      // Save name to localStorage for future use
       localStorage.setItem("neurotech-name", name);
 
-      const orderItems = (selectedMain === "Pilau" || selectedMain === "Matunda" || selectedMain === "Juice") ? [selectedMain] : [`${selectedMain} + ${selectedSide}`];
+      const orderItems = selectedSide
+        ? [`${selectedMain} + ${selectedSide}`]
+        : [selectedMain];
       let operation;
 
       if (alreadyOrdered && existingOrderId) {
-        // Update existing order
         operation = supabase
           .from("orders")
           .update({
             items: orderItems,
-            timestamp: new Date().toISOString(), // Update timestamp to current time
+            timestamp: new Date().toISOString(),
           })
           .eq("id", existingOrderId);
       } else {
-        // Insert new order
         operation = supabase.from("orders").insert({
           name,
           items: orderItems,
@@ -389,7 +266,6 @@ const Index = () => {
         return;
       }
 
-      // For backwards compatibility, still save in localStorage
       localStorage.setItem(
         "neurotech-order",
         JSON.stringify({
@@ -417,6 +293,16 @@ const Index = () => {
       });
       setSubmitting(false);
     }
+  };
+
+  const getSidesMessage = () => {
+    if (standaloneItems.has(selectedMain) && !optionalSideItems.has(selectedMain)) {
+      return `${selectedMain} is served alone (${getPriceForItem(selectedMain).toLocaleString()}/=)`;
+    }
+    if (optionalSideItems.has(selectedMain)) {
+      return `${selectedMain} can optionally be combined with add-ons (${getPriceForItem(selectedMain).toLocaleString()}/= alone)`;
+    }
+    return `Select a stew for ${selectedMain}`;
   };
 
   return (
@@ -507,58 +393,98 @@ const Index = () => {
               />
             </div>
 
-            <div className="space-y-8 mb-8">
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h2 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
-                  Main Dishes
-                </h2>
-                <p className="text-sm text-muted-foreground mb-4">Select one main dish</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {mainDishes.map((dish, index) => (
-                    <MenuCard
-                      key={dish}
-                      title={dish}
-                      selected={selectedMain === dish}
-                      onSelect={() => handleMainDishClick(dish)}
-                      index={index}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h2 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
-                  Sides / Stews (Mboga)
-                </h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {selectedMain === "Pilau"
-                    ? "Pilau is served alone without sides (4,000/=)"
-                    : selectedMain === "Matunda"
-                    ? "Matunda is served alone without sides (3,000/=)"
-                    : selectedMain === "Juice"
-                    ? "Juice is served alone without sides (3,000/=)"
-                    : selectedMain === "Chips" 
-                    ? "Chips can only be combined with Mayai, Kidari, or Paja" 
-                    : "Select one side dish"}
+            <div className={`space-y-8 mb-8 ${!name.trim() ? "opacity-50 pointer-events-none" : ""}`}>
+              {!name.trim() && (
+                <p className="text-sm text-muted-foreground text-center italic pointer-events-auto">
+                  Enter your name above to start ordering
                 </p>
-                {availableSides.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {availableSides.map((side, index) => (
+              )}
+              <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
+                    Food
+                  </h2>
+                  <p className="text-sm text-muted-foreground mb-4">Select one item</p>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {foodDishes.map((dish, index) => (
                       <MenuCard
-                        key={side}
-                        title={side}
-                        selected={selectedSide === side}
-                        onSelect={() => handleSideClick(side)}
-                        index={index + mainDishes.length}
+                        key={dish}
+                        title={dish}
+                        selected={selectedMain === dish}
+                        onSelect={() => handleMainDishClick(dish)}
+                        index={index}
                       />
                     ))}
                   </div>
-                ) : selectedMain === "Pilau" || selectedMain === "Matunda" || selectedMain === "Juice" ? (
-                  <div className="text-center p-8 border-2 border-dashed rounded-lg">
-                    <p className="text-muted-foreground">{selectedMain} is a complete meal on its own</p>
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
+                    Fruits
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {fruitsDishes.map((dish, index) => (
+                      <MenuCard
+                        key={dish}
+                        title={dish}
+                        selected={selectedMain === dish}
+                        onSelect={() => handleMainDishClick(dish)}
+                        index={index + foodDishes.length}
+                      />
+                    ))}
                   </div>
-                ) : null}
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
+                    Juice
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+                    {juiceDishes.map((dish, index) => (
+                      <MenuCard
+                        key={dish}
+                        title={dish}
+                        selected={selectedMain === dish}
+                        onSelect={() => handleMainDishClick(dish)}
+                        index={index + foodDishes.length + fruitsDishes.length}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
+
+              {selectedMain && (
+                <div className="bg-card border border-border rounded-lg p-6">
+                  <h2 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
+                    {availableSides.length > 0 ? "Sides / Stews (Mboga)" : "Selection"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {getSidesMessage()}
+                  </p>
+                  {availableSides.length > 0 ? (
+                    <div>
+                      {optionalSideItems.has(selectedMain) && (
+                        <p className="text-sm text-muted-foreground mb-2 italic">Add-ons are optional</p>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {availableSides.map((side, index) => (
+                          <MenuCard
+                            key={side}
+                            title={side}
+                            selected={selectedSide === side}
+                            onSelect={() => handleSideClick(side)}
+                            index={index + mainDishes.length}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : standaloneItems.has(selectedMain) ? (
+                    <div className="text-center p-8 border-2 border-dashed rounded-lg">
+                      <p className="text-muted-foreground">{selectedMain} is a complete item on its own</p>
+                    </div>
+                  ) : null}
+                </div>
+              )}
 
               {(selectedMain || selectedSide) && (
                 <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-5">
@@ -568,30 +494,30 @@ const Index = () => {
                         <h3 className="text-lg font-semibold">Your Order</h3>
                       </div>
                     </div>
-                    
+
                     {selectedMain && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm">Main: {selectedMain}</span>
                         <span className="text-sm font-medium">✓</span>
                       </div>
                     )}
-                    
+
                     {selectedSide && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm">Side: {selectedSide}</span>
                         <span className="text-sm font-medium">✓</span>
                       </div>
                     )}
-                    
-                    {selectedMain && (selectedMain === "Pilau" || selectedMain === "Matunda" || selectedMain === "Juice" || selectedSide) && (
+
+                    {selectedMain && (standaloneItems.has(selectedMain) || selectedSide) && (
                       <div className="pt-3 border-t">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-muted-foreground">
-                              {selectedMain === "Pilau" || selectedMain === "Matunda" || selectedMain === "Juice" ? "Standalone Dish" : "Combination"}
+                              {selectedSide ? "Combination" : "Standalone Item"}
                             </p>
                             <p className="font-medium">
-                              {selectedMain === "Pilau" || selectedMain === "Matunda" || selectedMain === "Juice" ? selectedMain : `${selectedMain} + ${selectedSide}`}
+                              {selectedSide ? `${selectedMain} + ${selectedSide}` : selectedMain}
                             </p>
                           </div>
                           <div className="text-right">
@@ -609,7 +535,7 @@ const Index = () => {
             <div className="flex justify-center mt-8">
               <Button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !name.trim() || !selectedMain || (!standaloneItems.has(selectedMain) && !selectedSide)}
                 className="px-8 py-6 text-lg rounded-xl transition-all duration-300 hover:scale-105"
               >
                 {submitting ? "Submitting..." : alreadyOrdered ? "Update Order" : "Submit Order"}

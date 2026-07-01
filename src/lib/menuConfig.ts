@@ -56,6 +56,23 @@ export const getOrderOfTheDay = (): string => {
   return foodCombos[dayOfMonth % foodCombos.length];
 };
 
+export const DELIVERY_FEE = 0;
+
+export const paymentConfig = {
+  food: {
+    name: "Bestina Meto",
+    phone: "",
+    paymentNumber: "1328660",
+    paymentType: "Withdrawal to MPESA",
+  },
+  extras: {
+    name: "JUICE ASILI",
+    phone: "",
+    paymentNumber: "6103 1001",
+    paymentType: "Selcom Lipa (*150*50*1#)",
+  },
+};
+
 export const isExtrasItem = (item: string): boolean => {
   return item.includes("Juice") || item === "Fruits";
 };

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getPriceForItem, isExtrasItem } from "@/lib/menuConfig";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,43 +46,6 @@ interface FoodCount {
   [key: string]: number;
 }
 
-// Pricing structure (same as Index.tsx)
-const getPriceForItem = (item: string): number => {
-  // Pilau standalone
-  if (item === "Pilau") return 4500;
-  
-  // Matunda standalone
-  if (item === "Matunda") return 3000;
-  if (item === "Juice") return 3000;
-  
-  // Chips combinations
-  if (item === "Chips") return 2000; // Chips Kavu
-  if (item.includes("Chips")) {
-    if (item.includes("Mayai")) return 3000;
-    if (item.includes("Kidari") || item.includes("Paja")) return 5000;
-    return 2000;
-  }
-  
-  // Special item Pande standalone
-  if (item === "Pande") return 5500;
-  
-  // Main + Side combinations
-  if (item.includes("+")) {
-    // Fish (Sangara) combinations cost more
-    if (item.includes("Samaki (Sangara)")) return 5500;
-    // Pande combinations
-    if (item.includes("Pande")) return 5000
-    // Ugali + Kidari or Ugali + Paja combinations
-    if (item.includes("Ugali") && (item.includes("Kidari") || item.includes("Paja"))) return 4000;
-    //wali + Kidari or Wali + Paja combinations
-    if (item.includes("Wali") && (item.includes("Kidari") || item.includes("Paja"))) return 5500;
-    // All other combinations
-    return 4500;
-  }
-  
-  return 0;
-};
-
 const Orders = () => {
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -91,17 +55,17 @@ const Orders = () => {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const isMatundaOrder = (order: OrderItem) =>
-    order.items.some((item) => item.includes("Matunda") || item.includes("Juice"));
-  const foodOrders = orders.filter((order) => !isMatundaOrder(order));
-  const matundaOrders = orders.filter((order) => isMatundaOrder(order));
+  const isExtrasOrder = (order: OrderItem) =>
+    order.items.every((item) => isExtrasItem(item));
+  const foodOrders = orders.filter((order) => !isExtrasOrder(order));
+  const extrasOrders = orders.filter((order) => isExtrasOrder(order));
 
   const foodItemsTotal = foodOrders.reduce(
     (sum, order) =>
       sum + order.items.reduce((orderSum, item) => orderSum + getPriceForItem(item), 0),
     0
   );
-  const matundaTotal = matundaOrders.reduce(
+  const extrasTotal = extrasOrders.reduce(
     (sum, order) =>
       sum + order.items.reduce((orderSum, item) => orderSum + getPriceForItem(item), 0),
     0
@@ -110,7 +74,7 @@ const Orders = () => {
   // Calculate total revenue for all orders
   const DELIVERY_FEE = 1000;
   const foodDeliveryTotal = foodOrders.length > 0 ? DELIVERY_FEE : 0;
-  const totalRevenue = foodItemsTotal + foodDeliveryTotal + matundaTotal;
+  const totalRevenue = foodItemsTotal + foodDeliveryTotal + extrasTotal;
 
   const isFromToday = (dateString: string): boolean => {
     const orderDate = new Date(dateString);
@@ -295,7 +259,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
   };
 
   const copyFoodOrdersToClipboard = () => {
-    let text = "Neurotech Africa - Food Orders (No Matunda/Juice)\n";
+    let text = "Neurotech Africa - Food Orders\n";
 
     if (foodOrders.length === 0) {
       text += "No food orders available.\n";
@@ -391,13 +355,13 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
 
     const foodDeliveryTotal = foodOrders.length > 0 ? DELIVERY_FEE : 0;
     const foodTotalWithDelivery = foodItemsTotal + foodDeliveryTotal;
-    const grandTotal = foodTotalWithDelivery + matundaTotal;
+    const grandTotal = foodTotalWithDelivery + extrasTotal;
 
     text += `\n\nTOTAL ORDERS: ${orders.length}\n`;
     text += `FOOD ORDERS: ${foodOrders.length}\n`;
-    text += `MATUNDA/JUICE ORDERS: ${matundaOrders.length}\n\n`;
+    text += `EXTRAS/JUICE ORDERS: ${extrasOrders.length}\n\n`;
     text += `FOOD TOTAL (Food + Delivery): ${foodTotalWithDelivery.toLocaleString()}/= TZS\n`;
-    text += `MATUNDA/JUICE TOTAL (No Delivery): ${matundaTotal.toLocaleString()}/= TZS\n\n`;
+    text += `EXTRAS/JUICE TOTAL (No Delivery): ${extrasTotal.toLocaleString()}/= TZS\n\n`;
     text += `GRAND TOTAL: ${grandTotal.toLocaleString()}/= TZS`;
 
     // Try modern clipboard API first
@@ -660,8 +624,11 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
             <h2 className="text-xl font-bold mb-4 text-center">
               Muhtasari wa Chakula
             </h2>
+
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Food</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               {Object.entries(foodCounts)
+                .filter(([item]) => !isExtrasItem(item))
                 .sort(([, countA], [, countB]) => countB - countA)
                 .map(([item, count]) => (
                   <div
@@ -673,6 +640,26 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                   </div>
                 ))}
             </div>
+
+            {Object.entries(foodCounts).some(([item]) => isExtrasItem(item)) && (
+              <>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Fruits / Juice / Extras</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                  {Object.entries(foodCounts)
+                    .filter(([item]) => isExtrasItem(item))
+                    .sort(([, countA], [, countB]) => countB - countA)
+                    .map(([item, count]) => (
+                      <div
+                        key={item}
+                        className="flex justify-between items-center p-3 border rounded-lg bg-background/50"
+                      >
+                        <span>{item}</span>
+                        <span className="font-semibold">{count}</span>
+                      </div>
+                    ))}
+                </div>
+              </>
+            )}
             <div className="border-t pt-4 mt-4">
               <div className="bg-primary/10 p-4 rounded-lg space-y-3">
                 <div className="flex justify-between items-center">
@@ -692,12 +679,12 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                     <span>{(foodItemsTotal + foodDeliveryTotal).toLocaleString()}/=</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Matunda/Juice Total</span>
-                    <span>{matundaTotal.toLocaleString()}/=</span>
+                    <span className="text-muted-foreground">Extras/Juice Total</span>
+                    <span>{extrasTotal.toLocaleString()}/=</span>
                   </div>
                 </div>
                 <div className="text-center pt-2 border-t border-primary/20">
-                  <p className="text-xs text-muted-foreground italic">Delivery is flat 1,000/= once for all Food orders. Matunda and Juice have no delivery cost.</p>
+                  <p className="text-xs text-muted-foreground italic">Delivery is flat 1,000/= once for all Food orders. Extras and Juice have no delivery cost.</p>
                 </div>
               </div>
             </div>
@@ -729,7 +716,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
               <TableBody>
                 <TableRow>
                   <TableCell colSpan={5} className="font-semibold bg-muted/40">
-                    Food Orders (No Matunda/Juice)
+                    Food Orders
                   </TableCell>
                 </TableRow>
                 {foodOrders.length > 0 ? (
@@ -776,11 +763,11 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
 
                 <TableRow>
                   <TableCell colSpan={5} className="font-semibold bg-muted/40">
-                    Matunda/Juice Orders
+                    Extras/Juice Orders
                   </TableCell>
                 </TableRow>
-                {matundaOrders.length > 0 ? (
-                  matundaOrders.map((order) => {
+                {extrasOrders.length > 0 ? (
+                  extrasOrders.map((order) => {
                     const orderTotal = order.items.reduce((sum, item) => sum + getPriceForItem(item), 0);
                     return (
                       <TableRow key={order.id}>
@@ -816,7 +803,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="text-muted-foreground">
-                      No Matunda/Juice orders.
+                      No extras/juice orders.
                     </TableCell>
                   </TableRow>
                 )}

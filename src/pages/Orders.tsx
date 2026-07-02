@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { getPriceForItem, isExtrasItem } from "@/lib/menuConfig";
+import { getPriceForItem, isExtrasItem, DELIVERY_FEE, paymentConfig } from "@/lib/menuConfig";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,8 +71,6 @@ const Orders = () => {
     0
   );
 
-  // Calculate total revenue for all orders
-  const DELIVERY_FEE = 1000;
   const foodDeliveryTotal = foodOrders.length > 0 ? DELIVERY_FEE : 0;
   const totalRevenue = foodItemsTotal + foodDeliveryTotal + extrasTotal;
 
@@ -218,24 +216,18 @@ const Orders = () => {
   const copyOrdersToClipboard = () => {
     let text = "Neurotech.Africa - Food Orders\n\n";
 
-   const DELIVERY_FEE = 1000;
-
 orders.forEach((order, index) => {
   const itemsTotal = order.items.reduce(
     (sum, item) => sum + getPriceForItem(item),
     0
   );
 
-  const orderTotal = itemsTotal + DELIVERY_FEE;
-
   text += `${index + 1}. ${order.name} - ${formatDate(order.timestamp)}\n`;
   text += `   Items: ${order.items.join(", ")}\n`;
-  text += `   Items Total: ${itemsTotal.toLocaleString()}/= TZS\n`;
-  // text += `   Delivery Fee: ${DELIVERY_FEE.toLocaleString()}/= TZS\n`;
-  text += `   Order Total: ${orderTotal.toLocaleString()}/= TZS\n\n`;
+  text += `   Total: ${itemsTotal.toLocaleString()}/= TZS\n\n`;
 });
 
-text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`;
+text += `\nTOTAL SPEND: ${totalRevenue.toLocaleString()}/= TZS\n`;
 
 
     // Try modern clipboard API first
@@ -269,8 +261,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
           sum + order.items.reduce((orderSum, item) => orderSum + getPriceForItem(item), 0),
         0
       );
-      const flatDeliveryFee = 1000;
-      const foodTotalWithDelivery = foodTotal + flatDeliveryFee;
+      const foodTotalWithDelivery = foodTotal + DELIVERY_FEE;
       const foodBreakdown: Record<string, number> = {};
 
       foodOrders.forEach((order) => {
@@ -287,8 +278,10 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
         });
 
       text += `\nTOTAL FOOD SPEND: ${foodTotal.toLocaleString()}/= TZS\n`;
-      text += `DELIVERY FEE (Flat): ${flatDeliveryFee.toLocaleString()}/= TZS\n`;
-      text += `TOTAL FOOD + DELIVERY: ${foodTotalWithDelivery.toLocaleString()}/= TZS\n`;
+      if (DELIVERY_FEE > 0) {
+        text += `DELIVERY FEE (Flat): ${DELIVERY_FEE.toLocaleString()}/= TZS\n`;
+        text += `TOTAL FOOD + DELIVERY: ${foodTotalWithDelivery.toLocaleString()}/= TZS\n`;
+      }
     }
 
     if (navigator.clipboard && window.isSecureContext) {
@@ -360,8 +353,11 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
     text += `\n\nTOTAL ORDERS: ${orders.length}\n`;
     text += `FOOD ORDERS: ${foodOrders.length}\n`;
     text += `EXTRAS/JUICE ORDERS: ${extrasOrders.length}\n\n`;
-    text += `FOOD TOTAL (Food + Delivery): ${foodTotalWithDelivery.toLocaleString()}/= TZS\n`;
-    text += `EXTRAS/JUICE TOTAL (No Delivery): ${extrasTotal.toLocaleString()}/= TZS\n\n`;
+    text += `FOOD TOTAL: ${foodItemsTotal.toLocaleString()}/= TZS\n`;
+    if (DELIVERY_FEE > 0) {
+      text += `DELIVERY FEE: ${DELIVERY_FEE.toLocaleString()}/= TZS\n`;
+    }
+    text += `EXTRAS/JUICE TOTAL: ${extrasTotal.toLocaleString()}/= TZS\n\n`;
     text += `GRAND TOTAL: ${grandTotal.toLocaleString()}/= TZS`;
 
     // Try modern clipboard API first
@@ -675,7 +671,7 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                 </div>
                 <div className="pt-2 border-t border-primary/20 text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Food Total (Food + Delivery)</span>
+                    <span className="text-muted-foreground">{DELIVERY_FEE > 0 ? "Food Total (Food + Delivery)" : "Food Total"}</span>
                     <span>{(foodItemsTotal + foodDeliveryTotal).toLocaleString()}/=</span>
                   </div>
                   <div className="flex justify-between">
@@ -683,10 +679,48 @@ text += `\nTOTAL SPEND + Delivery Fee: ${totalRevenue.toLocaleString()}/= TZS\n`
                     <span>{extrasTotal.toLocaleString()}/=</span>
                   </div>
                 </div>
-                <div className="text-center pt-2 border-t border-primary/20">
-                  <p className="text-xs text-muted-foreground italic">Delivery is flat 1,000/= once for all Food orders. Extras and Juice have no delivery cost.</p>
-                </div>
+                {DELIVERY_FEE > 0 && (
+                  <div className="text-center pt-2 border-t border-primary/20">
+                    <p className="text-xs text-muted-foreground italic">Delivery is flat {DELIVERY_FEE.toLocaleString()}/= once for all Food orders. Extras and Juice have no delivery cost.</p>
+                  </div>
+                )}
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Payment Details */}
+        {(paymentConfig.food.name || paymentConfig.extras.name) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="glass-morphism rounded-xl p-6 mb-8"
+          >
+            <h2 className="text-xl font-bold mb-4 text-center">Payment Details</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {paymentConfig.food.name && (
+                <div className="p-4 border rounded-lg bg-background/50">
+                  <h3 className="font-semibold text-primary mb-2">Food Payment</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-muted-foreground">Name:</span> {paymentConfig.food.name}</p>
+                    {paymentConfig.food.phone && <p><span className="text-muted-foreground">Phone:</span> {paymentConfig.food.phone}</p>}
+                    {paymentConfig.food.paymentNumber && <p><span className="text-muted-foreground">Payment #:</span> {paymentConfig.food.paymentNumber}</p>}
+                    {paymentConfig.food.paymentType && <p><span className="text-muted-foreground">Type:</span> {paymentConfig.food.paymentType}</p>}
+                  </div>
+                </div>
+              )}
+              {paymentConfig.extras.name && (
+                <div className="p-4 border rounded-lg bg-background/50">
+                  <h3 className="font-semibold text-primary mb-2">Juice / Extras Payment</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-muted-foreground">Name:</span> {paymentConfig.extras.name}</p>
+                    {paymentConfig.extras.phone && <p><span className="text-muted-foreground">Phone:</span> {paymentConfig.extras.phone}</p>}
+                    {paymentConfig.extras.paymentNumber && <p><span className="text-muted-foreground">Payment #:</span> {paymentConfig.extras.paymentNumber}</p>}
+                    {paymentConfig.extras.paymentType && <p><span className="text-muted-foreground">Type:</span> {paymentConfig.extras.paymentType}</p>}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

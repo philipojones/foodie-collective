@@ -31,7 +31,7 @@ export const getPriceForItem = (item: string): number => {
     if (item.includes("Juice") && item.includes("Cashewnuts")) return 5000;
     if (item.includes("Juice") && item.includes("Groundnuts")) return 4000;
     if (item.includes("Chips") && item.includes("Mayai")) return 3000;
-    if (item.includes("Chips") && item.includes("Mishkaki")) return 3000;
+    if (item.includes("Chips") && item.includes("Mishkaki")) return 5000;
     return 5000;
   }
 

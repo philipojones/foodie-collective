@@ -5,9 +5,9 @@ export const juiceDishes = ["Juice (Mix/Mango/Passion)", "Juice (Dates)"];
 export const mainDishes = [...foodDishes, ...fruitsDishes, ...juiceDishes];
 
 export const validSidesMap: Record<string, string[]> = {
-  Ugali: ["Utumbo wa Mbogamboga", "Kuku Lobo", "Nyama Choma (Ng'ombe)"],
+  Ugali: ["Utumbo wa Mbogamboga", "Kuku Robo", "Nyama Choma (Ng'ombe)"],
   Wali: ["Maini", "Nyama"],
-  Chips: ["Kuku Lobo", "Mayai", "Mishkaki (Vipande 3)"],
+  Chips: ["Kuku Robo", "Mayai", "Mishkaki (Vipande 3)"],
   Ndizi: ["Nyama"],
   "Juice (Mix/Mango/Passion)": ["Cashewnuts", "Groundnuts"],
 };
@@ -31,7 +31,7 @@ export const getPriceForItem = (item: string): number => {
     if (item.includes("Juice") && item.includes("Cashewnuts")) return 5000;
     if (item.includes("Juice") && item.includes("Groundnuts")) return 4000;
     if (item.includes("Chips") && item.includes("Mayai")) return 3000;
-    if (item.includes("Chips") && item.includes("Mishkaki")) return 3000;
+    if (item.includes("Chips") && item.includes("Mishkaki")) return 5000;
     return 5000;
   }
 

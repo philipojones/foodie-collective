@@ -210,10 +210,10 @@ export const DELIVERY_FEE = 0;
 
 export const paymentConfig = {
   food: {
-    name: "Bestina Meto",
+    name: "massawe (AM)",
     phone: "",
-    paymentNumber: "1328660",
-    paymentType: "Withdrawal to MPESA",
+    paymentNumber: "51483642",
+    paymentType: "MPesa Lipa Number",
   },
   extras: {
     name: "JUICE ASILI",
